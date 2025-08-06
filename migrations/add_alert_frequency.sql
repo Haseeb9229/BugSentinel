@@ -1,0 +1,1 @@
+ALTER TABLE "alert_settings" ADD COLUMN "alert_frequency" text DEFAULT 'immediate'; 
