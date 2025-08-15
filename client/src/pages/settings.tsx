@@ -26,6 +26,7 @@ export default function Settings() {
   const [scanFrequency, setScanFrequency] = useState("60");
   const [alertFrequency, setAlertFrequency] = useState("immediate");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [changedSettings, setChangedSettings] = useState<Set<string>>(new Set());
   const [highlightScanFrequency, setHighlightScanFrequency] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -43,16 +44,12 @@ export default function Settings() {
 
   // Handle URL parameters for highlighting sections
   useEffect(() => {
-    console.log('Settings page mounted, checking URL parameters');
     const urlParams = new URLSearchParams(window.location.search);
     const highlight = urlParams.get('highlight');
-    console.log('Highlight parameter:', highlight);
     if (highlight === 'scan-frequency') {
-      console.log('Setting highlight to true');
       setHighlightScanFrequency(true);
       // Remove highlight after 3 seconds
       setTimeout(() => {
-        console.log('Removing highlight');
         setHighlightScanFrequency(false);
       }, 3000);
     }
@@ -75,6 +72,7 @@ export default function Settings() {
       setScanFrequency(settings.scanFrequency?.toString() || "60");
       setAlertFrequency(settings.alertFrequency || "immediate");
       setHasUnsavedChanges(false);
+      setChangedSettings(new Set()); // Clear changed settings when loading new ones
     }
   }, [settings]);
 
@@ -82,54 +80,31 @@ export default function Settings() {
   const handleEmailEnabledChange = (enabled: boolean) => {
     setEmailEnabled(enabled);
     setHasUnsavedChanges(true);
-    
-    // Auto-save email enabled/disabled state
-    if (storeId) {
-      const newSettings = {
-        emailEnabled: enabled,
-        slackEnabled,
-        emailAddress,
-        slackBotToken,
-        slackChannelId,
-        scanFrequency: parseInt(scanFrequency),
-        alertFrequency,
-      };
-      saveSettingsMutation.mutate(newSettings);
-    }
+    setChangedSettings(prev => new Set(prev).add('emailEnabled'));
   };
 
   const handleSlackEnabledChange = (enabled: boolean) => {
     setSlackEnabled(enabled);
     setHasUnsavedChanges(true);
-    
-    // Auto-save Slack enabled/disabled state
-    if (storeId) {
-      const newSettings = {
-        emailEnabled,
-        slackEnabled: enabled,
-        emailAddress,
-        slackBotToken,
-        slackChannelId,
-        scanFrequency: parseInt(scanFrequency),
-        alertFrequency,
-      };
-      saveSettingsMutation.mutate(newSettings);
-    }
+    setChangedSettings(prev => new Set(prev).add('slackEnabled'));
   };
 
   const handleEmailAddressChange = (address: string) => {
     setEmailAddress(address);
     setHasUnsavedChanges(true);
+    setChangedSettings(prev => new Set(prev).add('emailAddress'));
   };
 
   const handleSlackBotTokenChange = (token: string) => {
     setSlackBotToken(token);
     setHasUnsavedChanges(true);
+    setChangedSettings(prev => new Set(prev).add('slackBotToken'));
   };
 
   const handleSlackChannelIdChange = (channelId: string) => {
     setSlackChannelId(channelId);
     setHasUnsavedChanges(true);
+    setChangedSettings(prev => new Set(prev).add('slackChannelId'));
   };
 
   // Save settings mutation
@@ -158,17 +133,12 @@ export default function Settings() {
   const handleScanFrequencyChange = (frequency: string) => {
     setScanFrequency(frequency);
     setHasUnsavedChanges(true);
+    setChangedSettings(prev => new Set(prev).add('scanFrequency'));
     
-    // Auto-save scan frequency changes immediately
+    // Auto-save scan frequency changes immediately since they affect scheduling
     if (storeId) {
       const newSettings = {
-        emailEnabled,
-        slackEnabled,
-        emailAddress,
-        slackBotToken,
-        slackChannelId,
         scanFrequency: parseInt(frequency),
-        alertFrequency,
       };
       saveSettingsMutation.mutate(newSettings);
     }
@@ -177,17 +147,23 @@ export default function Settings() {
   const handleSaveSettings = () => {
     if (!storeId) return;
 
-    const newSettings = {
-      emailEnabled,
-      slackEnabled,
-      emailAddress,
-      slackBotToken,
-      slackChannelId,
-      scanFrequency: parseInt(scanFrequency),
-      alertFrequency,
-    };
+    // Only send settings that have actually changed
+    const newSettings: any = {};
+    
+    if (changedSettings.has('emailEnabled')) newSettings.emailEnabled = emailEnabled;
+    if (changedSettings.has('slackEnabled')) newSettings.slackEnabled = slackEnabled;
+    if (changedSettings.has('emailAddress')) newSettings.emailAddress = emailAddress;
+    if (changedSettings.has('slackBotToken')) newSettings.slackBotToken = slackBotToken;
+    if (changedSettings.has('slackChannelId')) newSettings.slackChannelId = slackChannelId;
+    if (changedSettings.has('scanFrequency')) newSettings.scanFrequency = parseInt(scanFrequency);
+    if (changedSettings.has('alertFrequency')) newSettings.alertFrequency = alertFrequency;
 
-    saveSettingsMutation.mutate(newSettings);
+    // Only save if there are actual changes
+    if (Object.keys(newSettings).length > 0) {
+      saveSettingsMutation.mutate(newSettings);
+      // Clear the changed settings after saving
+      setChangedSettings(new Set());
+    }
   };
 
   // Show loading state while getting session
@@ -475,19 +451,9 @@ export default function Settings() {
                     <Select 
                       value={alertFrequency} 
                       onValueChange={(value) => {
-                        console.log("Alert frequency changed to:", value);
                         setAlertFrequency(value);
-                        // Auto-save when changed
-                        const newSettings = {
-                          emailEnabled,
-                          slackEnabled,
-                          emailAddress,
-                          slackBotToken,
-                          slackChannelId,
-                          scanFrequency: parseInt(scanFrequency),
-                          alertFrequency: value,
-                        };
-                        saveSettingsMutation.mutate(newSettings);
+                        setHasUnsavedChanges(true);
+                        setChangedSettings(prev => new Set(prev).add('alertFrequency'));
                       }}
                     >
                       <SelectTrigger>

@@ -4,13 +4,15 @@ import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useShopifyAuth } from "@/hooks/use-shopify-auth";
+import { useDevice } from "@/contexts/device-context";
 import { RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 import type { PerformanceMetric } from "@shared/schema";
 
 export default function Performance() {
+  const { deviceType } = useDevice();
   const [storeId, setStoreId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showLatestScan, setShowLatestScan] = useState(true); // Toggle between latest scan and 30-day average
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -23,7 +25,17 @@ export default function Performance() {
   }
 
   const { data: performanceData, isLoading, error } = useQuery({
-    queryKey: ["/api/performance", storeId],
+    queryKey: ["/api/performance", storeId, deviceType],
+    queryFn: async () => {
+      const response = await fetch(`/api/performance/${storeId}?deviceType=${deviceType}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch performance data: ${response.status}`);
+      }
+      const data = await response.json();
+      return data;
+    },
     enabled: !!storeId,
     refetchInterval: 30000, // Refresh every 30 seconds for real-time data
   });
@@ -31,7 +43,6 @@ export default function Performance() {
   const metrics = performanceData?.currentMetrics;
   const trends = performanceData?.trends;
   const latestScanInfo = performanceData?.latestScanInfo;
-  const thirtyDayAverages = performanceData?.thirtyDayAverages;
 
   const getMetricStatus = (value: number, good: number, needs: number) => {
     if (value <= good) return { status: 'Good', color: 'text-green-600', bgColor: 'bg-green-500' };
@@ -42,7 +53,7 @@ export default function Performance() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: ["/api/performance", storeId] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/performance", storeId, deviceType] });
       toast({
         title: "Performance Data Refreshed",
         description: "Latest performance metrics have been updated.",
@@ -240,28 +251,6 @@ export default function Performance() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900">Overall Performance Score</h2>
               <div className="flex items-center space-x-4">
-                {/* Toggle Switch */}
-                <div className="flex items-center space-x-3">
-                  <span className={`text-sm font-medium ${showLatestScan ? 'text-blue-600' : 'text-gray-500'}`}>
-                    Latest Scan
-                  </span>
-                  <button
-                    onClick={() => setShowLatestScan(!showLatestScan)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      showLatestScan ? 'bg-blue-600' : 'bg-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        showLatestScan ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                  <span className={`text-sm font-medium ${!showLatestScan ? 'text-blue-600' : 'text-gray-500'}`}>
-                    30-Day Average
-                  </span>
-                </div>
-                
                 {/* Trend Indicator */}
                 {trends?.overallScore && (
                   <div className="flex items-center space-x-1">
@@ -278,17 +267,12 @@ export default function Performance() {
               </div>
             </div>
             
-            {/* Dynamic Content Based on Toggle */}
+            {/* Latest Scan Content */}
             <div className="text-center">
               <div className="mb-3">
-                <h3 className="text-lg font-medium text-gray-900 mb-1">
-                  {showLatestScan ? 'Latest Scan' : '30-Day Average'}
-                </h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">Latest Scan</h3>
                 <p className="text-sm text-gray-500">
-                  {showLatestScan 
-                    ? (latestScanInfo ? `Scanned ${latestScanInfo.scanAge > 0 ? `${latestScanInfo.scanAge} hours ago` : 'recently'}` : 'No recent scan')
-                    : (thirtyDayAverages ? `Based on ${thirtyDayAverages.scanCount} scans` : 'No historical data')
-                  }
+                  {latestScanInfo ? `Scanned ${latestScanInfo.scanAge > 0 ? `${latestScanInfo.scanAge} hours ago` : 'recently'}` : 'No recent scan'}
                 </p>
               </div>
               <div className="relative inline-block">
@@ -302,59 +286,35 @@ export default function Performance() {
                     fill="transparent"
                     className="text-gray-200"
                   />
-                  {showLatestScan ? (
-                    validOverallScore !== null && (
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="36"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="transparent"
-                        strokeDasharray={`${2 * Math.PI * 36}`}
-                        strokeDashoffset={`${2 * Math.PI * 36 * (1 - validOverallScore / 100)}`}
-                        className={`${validOverallScore >= 90 ? 'text-green-500' : validOverallScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}
-                      />
-                    )
-                  ) : (
-                    thirtyDayAverages?.overallScore && (
-                      <circle
-                        cx="48"
-                        cy="48"
-                        r="36"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        fill="transparent"
-                        strokeDasharray={`${2 * Math.PI * 36}`}
-                        strokeDashoffset={`${2 * Math.PI * 36 * (1 - thirtyDayAverages.overallScore / 100)}`}
-                        className={`${thirtyDayAverages.overallScore >= 90 ? 'text-green-500' : thirtyDayAverages.overallScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}
-                      />
-                    )
+                  {validOverallScore !== null && (
+                    <circle
+                      cx="48"
+                      cy="48"
+                      r="36"
+                      stroke="currentColor"
+                      strokeWidth="8"
+                      fill="transparent"
+                      strokeDasharray={`${2 * Math.PI * 36}`}
+                      strokeDashoffset={`${2 * Math.PI * 36 * (1 - validOverallScore / 100)}`}
+                      className={`${validOverallScore >= 90 ? 'text-green-500' : validOverallScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}
+                    />
                   )}
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-2xl font-bold text-gray-900">
-                    {showLatestScan 
-                      ? (validOverallScore !== null ? validOverallScore : 'N/A')
-                      : (thirtyDayAverages?.overallScore ? Math.round(thirtyDayAverages.overallScore) : 'N/A')
-                    }
+                    {validOverallScore !== null ? validOverallScore : 'N/A'}
                   </span>
                 </div>
               </div>
               <p className="text-sm text-gray-500 mt-2">
-                {showLatestScan 
-                  ? (validOverallScore === null ? 'No data available' : 
-                     validOverallScore >= 90 ? 'Excellent' : validOverallScore >= 50 ? 'Good' : 'Needs Improvement')
-                  : (thirtyDayAverages?.overallScore ? 
-                     (thirtyDayAverages.overallScore >= 90 ? 'Excellent' : thirtyDayAverages.overallScore >= 50 ? 'Good' : 'Needs Improvement') : 
-                     'No data available')
-                }
+                {validOverallScore === null ? 'No data available' : 
+                 validOverallScore >= 90 ? 'Excellent' : validOverallScore >= 50 ? 'Good' : 'Needs Improvement'}
               </p>
             </div>
           </div>
 
-          {/* Core Web Vitals */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Core Web Vitals & Additional Scores */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             {/* LCP */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -369,37 +329,24 @@ export default function Performance() {
                       )}
                     </div>
                   )}
-                  {showLatestScan ? (
-                    validLcp !== null && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${lcpStatus.color} ${lcpStatus.bgColor} bg-opacity-10`}>
-                        {lcpStatus.status}
-                      </span>
-                    )
-                  ) : (
-                    thirtyDayAverages?.lcp && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMetricStatus(thirtyDayAverages.lcp, 2.5, 4.0).color} ${getMetricStatus(thirtyDayAverages.lcp, 2.5, 4.0).bgColor} bg-opacity-10`}>
-                        {getMetricStatus(thirtyDayAverages.lcp, 2.5, 4.0).status}
-                      </span>
-                    )
+                  {validLcp !== null && (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${lcpStatus.color} ${lcpStatus.bgColor} bg-opacity-10`}>
+                      {lcpStatus.status}
+                    </span>
                   )}
                 </div>
               </div>
               
               <div className="text-center mb-4">
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {showLatestScan 
-                    ? (validLcp !== null ? `${validLcp}s` : 'N/A')
-                    : (thirtyDayAverages?.lcp ? `${thirtyDayAverages.lcp.toFixed(2)}s` : 'N/A')
-                  }
+                  {validLcp !== null ? `${validLcp}s` : 'N/A'}
                 </div>
-                <p className="text-sm text-gray-500">
-                  {showLatestScan ? 'Latest Scan' : '30-Day Average'}
-                </p>
+                <p className="text-sm text-gray-500">Latest Scan</p>
               </div>
               
               <p className="text-sm text-gray-500 mb-3">Target: &lt; 2.5s</p>
               
-              {(showLatestScan ? validLcp !== null : thirtyDayAverages?.lcp) && (
+              {validLcp !== null && (
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Good</span>
@@ -408,8 +355,8 @@ export default function Performance() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${showLatestScan ? lcpStatus.bgColor : getMetricStatus(thirtyDayAverages?.lcp || 0, 2.5, 4.0).bgColor}`}
-                      style={{ width: `${Math.min(((showLatestScan ? validLcp : thirtyDayAverages?.lcp) || 0) / 4.0 * 100, 100)}%` }}
+                      className={`h-2 rounded-full ${lcpStatus.bgColor}`}
+                      style={{ width: `${Math.min((validLcp || 0) / 4.0 * 100, 100)}%` }}
                     ></div>
                   </div>
                 </div>
@@ -430,37 +377,26 @@ export default function Performance() {
                       )}
                     </div>
                   )}
-                  {showLatestScan ? (
-                    validFcp !== null && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${fcpStatus.color} ${fcpStatus.bgColor} bg-opacity-10`}>
-                        {fcpStatus.status}
-                      </span>
-                    )
-                  ) : (
-                    thirtyDayAverages?.fcp && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMetricStatus(thirtyDayAverages.fcp, 1.8, 3.0).color} ${getMetricStatus(thirtyDayAverages.fcp, 1.8, 3.0).bgColor} bg-opacity-10`}>
-                        {getMetricStatus(thirtyDayAverages.fcp, 1.8, 3.0).status}
-                      </span>
-                    )
+                  {validFcp !== null && (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${fcpStatus.color} ${fcpStatus.bgColor} bg-opacity-10`}>
+                      {fcpStatus.status}
+                    </span>
                   )}
                 </div>
               </div>
               
               <div className="text-center mb-4">
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {showLatestScan 
-                    ? (validFcp !== null ? `${validFcp}s` : 'N/A')
-                    : (thirtyDayAverages?.fcp ? `${thirtyDayAverages.fcp.toFixed(2)}s` : 'N/A')
-                  }
+                  {validFcp !== null ? `${validFcp}s` : 'N/A'}
                 </div>
                 <p className="text-sm text-gray-500">
-                  {showLatestScan ? 'Latest Scan' : '30-Day Average'}
+                  Latest Scan
                 </p>
               </div>
               
               <p className="text-sm text-gray-500 mb-3">Target: &lt; 1.8s</p>
               
-              {(showLatestScan ? validFcp !== null : thirtyDayAverages?.fcp) && (
+              {validFcp !== null && (
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Good</span>
@@ -469,8 +405,8 @@ export default function Performance() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${showLatestScan ? fcpStatus.bgColor : getMetricStatus(thirtyDayAverages?.fcp || 0, 1.8, 3.0).bgColor}`}
-                      style={{ width: `${Math.min(((showLatestScan ? validFcp : thirtyDayAverages?.fcp) || 0) / 3.0 * 100, 100)}%` }}
+                      className={`h-2 rounded-full ${fcpStatus.bgColor}`}
+                      style={{ width: `${Math.min((validFcp || 0) / 3.0 * 100, 100)}%` }}
                     ></div>
                   </div>
                 </div>
@@ -491,37 +427,26 @@ export default function Performance() {
                       )}
                     </div>
                   )}
-                  {showLatestScan ? (
-                    validCls !== null && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${clsStatus.color} ${clsStatus.bgColor} bg-opacity-10`}>
-                        {clsStatus.status}
-                      </span>
-                    )
-                  ) : (
-                    thirtyDayAverages?.cls && (
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getMetricStatus(thirtyDayAverages.cls, 0.1, 0.25).color} ${getMetricStatus(thirtyDayAverages.cls, 0.1, 0.25).bgColor} bg-opacity-10`}>
-                        {getMetricStatus(thirtyDayAverages.cls, 0.1, 0.25).status}
-                      </span>
-                    )
+                  {validCls !== null && (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${clsStatus.color} ${clsStatus.bgColor} bg-opacity-10`}>
+                      {clsStatus.status}
+                    </span>
                   )}
                 </div>
               </div>
               
               <div className="text-center mb-4">
                 <div className="text-3xl font-bold text-gray-900 mb-1">
-                  {showLatestScan 
-                    ? (validCls !== null ? validCls : 'N/A')
-                    : (thirtyDayAverages?.cls ? thirtyDayAverages.cls.toFixed(3) : 'N/A')
-                  }
+                  {validCls !== null ? validCls : 'N/A'}
                 </div>
                 <p className="text-sm text-gray-500">
-                  {showLatestScan ? 'Latest Scan' : '30-Day Average'}
+                  Latest Scan
                 </p>
               </div>
               
               <p className="text-sm text-gray-500 mb-3">Target: &lt; 0.1</p>
               
-              {(showLatestScan ? validCls !== null : thirtyDayAverages?.cls) && (
+              {validCls !== null && (
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                     <span>Good</span>
@@ -530,12 +455,153 @@ export default function Performance() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
-                      className={`h-2 rounded-full ${showLatestScan ? clsStatus.bgColor : getMetricStatus(thirtyDayAverages?.cls || 0, 0.1, 0.25).bgColor}`}
-                      style={{ width: `${Math.min(((showLatestScan ? validCls : thirtyDayAverages?.cls) || 0) / 0.25 * 100, 100)}%` }}
+                      className={`h-2 rounded-full ${clsStatus.bgColor}`}
+                      style={{ width: `${Math.min((validCls || 0) / 0.25 * 100, 100)}%` }}
                     ></div>
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Additional Performance Scores */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Additional Performance Scores</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Accessibility Score */}
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Accessibility</h3>
+                <div className="relative inline-block mb-3">
+                  <svg className="w-20 h-20 transform -rotate-90">
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="32"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="transparent"
+                      className="text-gray-200"
+                    />
+                    {metrics?.accessibilityScore && (
+                      <circle
+                        cx="40"
+                        cy="40"
+                        r="32"
+                        stroke="currentColor"
+                        strokeWidth="6"
+                        fill="transparent"
+                        strokeDasharray={`${2 * Math.PI * 32}`}
+                        strokeDashoffset={`${2 * Math.PI * 32 * (1 - metrics.accessibilityScore / 100)}`}
+                        className={`${metrics.accessibilityScore >= 90 ? 'text-green-500' : metrics.accessibilityScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}
+                      />
+                    )}
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg font-bold text-gray-900">
+                      {metrics?.accessibilityScore ? Math.round(metrics.accessibilityScore) : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                <p className={`text-sm font-medium ${
+                  metrics?.accessibilityScore ? 
+                   (metrics.accessibilityScore >= 90 ? 'text-green-600' : metrics.accessibilityScore >= 50 ? 'text-yellow-600' : 'text-red-600') : 'text-gray-500'
+                }`}>
+                  {metrics?.accessibilityScore ? 
+                   (metrics.accessibilityScore >= 90 ? 'Excellent' : metrics.accessibilityScore >= 50 ? 'Good' : 'Needs Improvement') : 'No Data'
+                  }
+                </p>
+              </div>
+
+              {/* Best Practices Score */}
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Best Practices</h3>
+                <div className="relative inline-block mb-3">
+                  <svg className="w-20 h-20 transform -rotate-90">
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="32"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="transparent"
+                      className="text-gray-200"
+                    />
+                    {metrics?.bestPracticesScore && (
+                      <circle
+                        cx="40"
+                        cy="40"
+                        r="32"
+                        stroke="currentColor"
+                        strokeWidth="6"
+                        fill="transparent"
+                        strokeDasharray={`${2 * Math.PI * 32}`}
+                        strokeDashoffset={`${2 * Math.PI * 32 * (1 - metrics.bestPracticesScore / 100)}`}
+                        className={`${metrics.bestPracticesScore >= 90 ? 'text-green-500' : metrics.bestPracticesScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}
+                      />
+                    )}
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg font-bold text-gray-900">
+                      {metrics?.bestPracticesScore ? Math.round(metrics.bestPracticesScore) : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                <p className={`text-sm font-medium ${
+                  metrics?.bestPracticesScore ? 
+                   (metrics.bestPracticesScore >= 90 ? 'text-green-600' : metrics.bestPracticesScore >= 50 ? 'text-yellow-600' : 'text-red-600') : 'text-gray-500'
+                }`}>
+                  {metrics?.bestPracticesScore ? 
+                   (metrics.bestPracticesScore >= 90 ? 'Excellent' : metrics.bestPracticesScore >= 50 ? 'Good' : 'Needs Improvement') : 'No Data'
+                  }
+                </p>
+              </div>
+
+              {/* SEO Score */}
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">SEO</h3>
+                <div className="relative inline-block mb-3">
+                  <svg className="w-20 h-20 transform -rotate-90">
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="32"
+                      stroke="currentColor"
+                      strokeWidth="6"
+                      fill="transparent"
+                      className="text-gray-200"
+                    />
+                    {metrics?.seoScore && (
+                      <circle
+                        cx="40"
+                        cy="40"
+                        r="32"
+                        stroke="currentColor"
+                        strokeWidth="6"
+                        fill="transparent"
+                        strokeDasharray={`${2 * Math.PI * 32}`}
+                        strokeDashoffset={`${2 * Math.PI * 32 * (1 - metrics.seoScore / 100)}`}
+                        className={`${metrics.seoScore >= 90 ? 'text-green-500' : metrics.seoScore >= 50 ? 'text-yellow-500' : 'text-red-500'}`}
+                      />
+                    )}
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg font-bold text-gray-900">
+                      {metrics?.seoScore ? Math.round(metrics.seoScore) : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                <p className={`text-sm font-medium ${
+                  metrics?.seoScore ? 
+                   (metrics.seoScore >= 90 ? 'text-green-600' : metrics.seoScore >= 50 ? 'text-yellow-600' : 'text-red-600') : 'text-gray-500'
+                }`}>
+                  {metrics?.seoScore ? 
+                   (metrics.seoScore >= 90 ? 'Excellent' : metrics.seoScore >= 50 ? 'Good' : 'Needs Improvement') : 'No Data'
+                  }
+                </p>
+              </div>
             </div>
           </div>
 

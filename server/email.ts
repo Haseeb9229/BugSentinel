@@ -71,7 +71,7 @@ export async function sendEmail(notification: EmailNotification): Promise<boolea
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
+    
     return true;
   } catch (error) {
     console.error('Failed to send email:', error);

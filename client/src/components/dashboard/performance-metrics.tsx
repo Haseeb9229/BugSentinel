@@ -158,7 +158,103 @@ export default function PerformanceMetrics({ metrics, trends }: PerformanceMetri
             </div>
           </div>
 
-          {/* Page Speed Score */}
+          {/* Additional Performance Scores */}
+          <div className="pt-4 border-t border-shopify-border">
+            <p className="text-sm font-medium text-gray-700 mb-4">Additional Performance Scores</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Accessibility Score */}
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-2">Accessibility</p>
+                <div className="w-16 h-16 mx-auto relative mb-2">
+                  <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="28" stroke="#E5E7EB" strokeWidth="8" fill="none"/>
+                    <circle 
+                      cx="32" 
+                      cy="32" 
+                      r="28" 
+                      stroke="currentColor" 
+                      strokeWidth="8" 
+                      fill="none" 
+                      strokeDasharray="175.929" 
+                      strokeDashoffset={175.929 - (175.929 * (metrics?.accessibilityScore || 0) / 100)} 
+                      strokeLinecap="round"
+                      className={getScoreColor(metrics?.accessibilityScore || 0)}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className={`text-lg font-bold ${metrics?.accessibilityScore ? getScoreColor(metrics.accessibilityScore) : 'text-gray-500'}`}>
+                      {metrics?.accessibilityScore || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                <p className={`text-sm font-medium ${metrics?.accessibilityScore ? getScoreColor(metrics.accessibilityScore) : 'text-gray-500'}`}>
+                  {metrics?.accessibilityScore ? getScoreStatus(metrics.accessibilityScore) : 'No Data'}
+                </p>
+              </div>
+
+              {/* Best Practices Score */}
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-2">Best Practices</p>
+                <div className="w-16 h-16 mx-auto relative mb-2">
+                  <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="28" stroke="#E5E7EB" strokeWidth="8" fill="none"/>
+                    <circle 
+                      cx="32" 
+                      cy="32" 
+                      r="28" 
+                      stroke="currentColor" 
+                      strokeWidth="8" 
+                      fill="none" 
+                      strokeDasharray="175.929" 
+                      strokeDashoffset={175.929 - (175.929 * (metrics?.bestPracticesScore || 0) / 100)} 
+                      strokeLinecap="round"
+                      className={getScoreColor(metrics?.bestPracticesScore || 0)}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className={`text-lg font-bold ${metrics?.bestPracticesScore ? getScoreColor(metrics.bestPracticesScore) : 'text-gray-500'}`}>
+                      {metrics?.bestPracticesScore || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                <p className={`text-sm font-medium ${metrics?.bestPracticesScore ? getScoreColor(metrics.bestPracticesScore) : 'text-gray-500'}`}>
+                  {metrics?.bestPracticesScore ? getScoreStatus(metrics.bestPracticesScore) : 'No Data'}
+                </p>
+              </div>
+
+              {/* SEO Score */}
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-2">SEO</p>
+                <div className="w-16 h-16 mx-auto relative mb-2">
+                  <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r="28" stroke="#E5E7EB" strokeWidth="8" fill="none"/>
+                    <circle 
+                      cx="32" 
+                      cy="32" 
+                      r="28" 
+                      stroke="currentColor" 
+                      strokeWidth="8" 
+                      fill="none" 
+                      strokeDasharray="175.929" 
+                      strokeDashoffset={175.929 - (175.929 * (metrics?.seoScore || 0) / 100)} 
+                      strokeLinecap="round"
+                      className={getScoreColor(metrics?.seoScore || 0)}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className={`text-lg font-bold ${metrics?.seoScore ? getScoreColor(metrics.seoScore) : 'text-gray-500'}`}>
+                      {metrics?.seoScore || 'N/A'}
+                    </span>
+                  </div>
+                </div>
+                <p className={`text-sm font-medium ${metrics?.seoScore ? getScoreColor(metrics.seoScore) : 'text-gray-500'}`}>
+                  {metrics?.seoScore ? getScoreStatus(metrics.seoScore) : 'No Data'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Overall Performance Score */}
           <div className="pt-4 border-t border-shopify-border">
             <div className="flex items-center space-x-4">
               <div className="flex-1">
@@ -175,9 +271,9 @@ export default function PerformanceMetrics({ metrics, trends }: PerformanceMetri
                         strokeWidth="8" 
                         fill="none" 
                         strokeDasharray="175.929" 
-                        strokeDashoffset={175.929 - (175.929 * overallScore / 100)} 
+                        strokeDashoffset={175.929 - (175.929 * (overallScore ? overallScore : 0)  / 100)} 
                         strokeLinecap="round"
-                        className={getScoreColor(overallScore)}
+                        className={getScoreColor(overallScore ? overallScore : 0)}
                       />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">

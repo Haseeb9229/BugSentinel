@@ -46,8 +46,6 @@ app.use((req, res, next) => {
   // Start scan scheduler
   const { scanScheduler } = await import("./scan-scheduler");
   await scanScheduler.start();
-  
-
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -55,14 +53,6 @@ app.use((req, res, next) => {
 
     res.status(status).json({ message });
     throw err;
-  });
-
-  // Add a specific middleware to handle API routes before Vite
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/api/')) {
-      return next();
-    }
-    next();
   });
 
   // importantly only setup vite in development and after

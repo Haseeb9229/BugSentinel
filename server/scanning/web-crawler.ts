@@ -46,7 +46,7 @@ export interface CrawlIssue {
   details?: any;
 }
 
-export async function crawlWebsite(baseUrl: string, maxPages: number = 10): Promise<{
+export async function crawlWebsite(baseUrl: string, maxPages: number = 10, deviceType: 'mobile' | 'desktop' = 'desktop'): Promise<{
   results: CrawlResult[];
   issues: CrawlIssue[];
   summary: {
@@ -60,10 +60,7 @@ export async function crawlWebsite(baseUrl: string, maxPages: number = 10): Prom
   let browser;
   
   try {
-    console.log(`Starting website crawl for: ${baseUrl}`);
-    if (isShopifyDevStore) {
-      console.log('Detected Shopify development store - may be password protected');
-    }
+
     
     // Launch browser with improved stability
     browser = await puppeteer.launch({
@@ -89,14 +86,66 @@ export async function crawlWebsite(baseUrl: string, maxPages: number = 10): Prom
     });
 
     const page = await browser.newPage();
-    await page.setUserAgent('Bug Patrol Scanner/1.0');
     
-    // Set viewport
-    await page.setViewport({ width: 1366, height: 768 });
+    // Set device-specific configurations matching Google PageSpeed Insights
+    if (deviceType === 'mobile') {
+      // Mobile configuration (Pixel 5 - same as Lighthouse)
+      await page.setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Mobile Safari/537.36');
+      await page.setViewport({ 
+        width: 412, 
+        height: 823, 
+        deviceScaleFactor: 2.625, 
+        isMobile: true, 
+        hasTouch: true 
+      });
+      // Mobile configuration (Pixel 5 - same as Lighthouse)
+      await page.setUserAgent('Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Mobile Safari/537.36');
+      await page.setViewport({ 
+        width: 412, 
+        height: 823, 
+        deviceScaleFactor: 2.625, 
+        isMobile: true, 
+        hasTouch: true 
+      });
+    } else {
+      // Desktop configuration (high-end desktop)
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+      await page.setViewport({ width: 1350, height: 940 });
+    }
     
-    // Set longer timeout and improved navigation settings
-    await page.setDefaultNavigationTimeout(45000); // 45 seconds
-    await page.setDefaultTimeout(45000);
+    // Set device-specific throttling and timeouts matching Google's approach
+    if (deviceType === 'mobile') {
+      // Mobile: 3G network simulation
+      await page.setDefaultNavigationTimeout(60000); // 60 seconds for mobile
+      await page.setDefaultTimeout(60000);
+      
+      // Enable realistic mobile network throttling
+      const client = await page.target().createCDPSession();
+      await client.send('Network.enable');
+      await client.send('Network.emulateNetworkConditions', {
+        offline: false,
+        downloadThroughput: 1638 * 1024 / 8, // 3G speeds (1.638 Mbps)
+        uploadThroughput: 750 * 1024 / 8, // 750 Kbps upload
+        latency: 150 // 150ms latency
+      });
+      
+      // Add CPU throttling for mobile
+      await client.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+    } else {
+      // Desktop: fast network simulation
+      await page.setDefaultNavigationTimeout(45000); // 45 seconds
+      await page.setDefaultTimeout(45000);
+      
+      // Enable realistic desktop network conditions
+      const client = await page.target().createCDPSession();
+      await client.send('Network.enable');
+      await client.send('Network.emulateNetworkConditions', {
+        offline: false,
+        downloadThroughput: 10240 * 1024 / 8, // 10 Mbps download
+        uploadThroughput: 5120 * 1024 / 8, // 5 Mbps upload
+        latency: 40 // 40ms latency
+      });
+    }
     
     // Allow images but disable CSS and fonts for faster loading during crawl
     await page.setRequestInterception(true);
@@ -124,7 +173,7 @@ export async function crawlWebsite(baseUrl: string, maxPages: number = 10): Prom
       visitedUrls.add(currentUrl);
       
       try {
-        console.log(`Crawling page: ${currentUrl}`);
+
         const pageResult = await crawlPage(page, currentUrl);
         results.push(pageResult);
         
@@ -146,7 +195,7 @@ export async function crawlWebsite(baseUrl: string, maxPages: number = 10): Prom
 
     // If we're dealing with a Shopify dev store and got very few results, add fallback analysis
     if (isShopifyDevStore && results.length <= 2) {
-      console.log('Limited access detected - adding fallback analysis for Shopify development store');
+
       
       // Add basic analysis for the main page
       const mainPageResult = results.find(r => r.url === baseUrl);
@@ -202,7 +251,6 @@ export async function crawlWebsite(baseUrl: string, maxPages: number = 10): Prom
         Math.round(results.reduce((sum, r) => sum + r.loadTime, 0) / results.length) : 0
     };
 
-    console.log(`Website crawl completed. Analyzed ${results.length} pages, found ${issues.length} issues`);
     return { results, issues, summary };
 
   } catch (error) {
@@ -259,7 +307,6 @@ async function crawlPage(page: puppeteer.Page, url: string): Promise<CrawlResult
     // Check if we're redirected to a password page (common in Shopify dev stores)
     const currentUrl = page.url();
     if (currentUrl.includes('/password') || currentUrl.includes('/admin') || currentUrl.includes('/login')) {
-      console.log(`Page ${url} is password protected or requires authentication`);
       statusCode = 403; // Forbidden
     }
     
@@ -582,9 +629,7 @@ function analyzeCrawlIssues(results: CrawlResult[]): CrawlIssue[] {
         }))
       );
       
-      console.log(`Found ${totalMissingAlts} images without alt text across ${pagesWithMissingAlts.length} pages`);
-      console.log(`Total image details collected: ${allImageDetails.length}`);
-      console.log('Sample image details:', allImageDetails.slice(0, 2));
+
     
     issues.push({
       type: 'accessibility',

@@ -12,6 +12,9 @@ import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useShopifyAuth } from "@/hooks/use-shopify-auth";
+import { useDevice } from "@/contexts/device-context";
+import { DeviceToggle } from "@/components/device-toggle";
+
 
 
 interface DashboardData {
@@ -41,6 +44,7 @@ export default function Dashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [storeId, setStoreId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { deviceType, setDeviceType } = useDevice();
 
   // Get session data from authentication hook
   const { session, isLoading: sessionLoading, isAuthenticated } = useShopifyAuth();
@@ -53,7 +57,16 @@ export default function Dashboard() {
   }, [session]);
 
   const { data: dashboardData, isLoading, refetch } = useQuery<DashboardData>({
-    queryKey: ["/api/dashboard", storeId],
+    queryKey: ["/api/dashboard", storeId, deviceType],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/${storeId}?deviceType=${deviceType}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard data');
+      }
+      return response.json();
+    },
     enabled: !!storeId, // Only run query when we have a storeId
   });
 
@@ -74,7 +87,8 @@ export default function Dashboard() {
       const scanResponse = await apiRequest("POST", "/api/scans", {
         storeId,
         type: "full_site",
-        status: "running"
+        status: "running",
+        deviceType: deviceType
       });
       
       if (!scanResponse.ok) {
@@ -82,7 +96,6 @@ export default function Dashboard() {
       }
 
       const scanData = await scanResponse.json();
-      console.log('Scan started:', scanData);
 
       // Poll for scan completion
       const pollScanStatus = async () => {
@@ -104,7 +117,6 @@ export default function Dashboard() {
             const statusResponse = await apiRequest("GET", `/api/scans/${scanData.id}`);
             if (statusResponse.ok) {
               const statusData = await statusResponse.json();
-              console.log('Scan status:', statusData);
 
               if (statusData.status === 'completed') {
                 setIsScanning(false);
@@ -226,22 +238,28 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-            <div className="flex space-x-3">
-              <Button
-                onClick={refreshStoreData}
-                disabled={isRefreshing || isLoading}
-                className="flex items-center space-x-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-              </Button>
-              <Button
-                onClick={handleManualScan}
-                disabled={isScanning}
-                className="bg-shopify-green hover:bg-shopify-green-dark text-white"
-              >
-                {isScanning ? "Scanning..." : "Run Scan"}
-              </Button>
+            <div className="flex items-center space-x-4">
+              {/* Device Toggle */}
+              <DeviceToggle deviceType={deviceType} onDeviceChange={setDeviceType} className="w-full"/>
+              
+              {/* Action Buttons */}
+              <div className="flex space-x-3">
+                <Button
+                  onClick={refreshStoreData}
+                  disabled={isRefreshing || isLoading}
+                  className="flex items-center space-x-2"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
+                </Button>
+                <Button
+                  onClick={handleManualScan}
+                  disabled={isScanning}
+                  className="bg-shopify-green hover:bg-shopify-green-dark text-white"
+                >
+                  {isScanning ? "Scanning..." : "Run Scan"}
+                </Button>
+              </div>
             </div>
           </div>
 

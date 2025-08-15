@@ -21,7 +21,6 @@ export async function scheduleAlert(
     // Get alert settings for the store
     const settings = await storage.getAlertSettings(storeId);
     if (!settings) {
-      console.log(`No alert settings found for store ${storeId}`);
       return;
     }
 
@@ -48,7 +47,6 @@ export async function scheduleAlert(
     };
 
     delayedAlerts.push(delayedAlert);
-    console.log(`Alert scheduled for ${scheduledFor.toISOString()} (${alertFrequency} delay)`);
   } catch (error) {
     console.error('Error scheduling alert:', error);
   }
@@ -114,7 +112,6 @@ export async function processDelayedAlerts(): Promise<void> {
   for (const alert of alertsToSend) {
     try {
       await sendAlertImmediately(alert.storeId, alert.type, alert.data);
-      console.log(`Delayed alert sent for store ${alert.storeId}`);
     } catch (error) {
       console.error(`Error sending delayed alert for store ${alert.storeId}:`, error);
     }
@@ -129,5 +126,4 @@ export async function processDelayedAlerts(): Promise<void> {
 // Start the alert processor (runs every minute)
 export function startAlertProcessor(): void {
   setInterval(processDelayedAlerts, 60 * 1000); // Every minute
-  console.log('Alert delay processor started');
 } 

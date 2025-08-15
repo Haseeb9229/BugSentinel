@@ -7,11 +7,9 @@ class UptimeMonitor {
 
   async start() {
     if (this.isRunning) {
-      console.log('Uptime monitor is already running');
       return;
     }
 
-    console.log('🚀 Starting uptime monitoring service...');
     this.isRunning = true;
 
     // Run initial check
@@ -21,8 +19,6 @@ class UptimeMonitor {
     this.interval = setInterval(async () => {
       await this.performUptimeChecks();
     }, 5 * 60 * 1000); // 5 minutes
-
-    console.log('✅ Uptime monitoring service started (checks every 5 minutes)');
   }
 
   async stop() {
@@ -31,32 +27,24 @@ class UptimeMonitor {
       this.interval = null;
     }
     this.isRunning = false;
-    console.log('🛑 Uptime monitoring service stopped');
   }
 
   private async performUptimeChecks() {
     try {
-      console.log('🔍 Performing uptime checks...');
-      
       // Get all active stores
       const stores = await storage.getAllStores();
       const activeStores = stores.filter(store => store.isActive);
 
       if (activeStores.length === 0) {
-        console.log('No active stores to monitor');
         return;
       }
-
-      console.log(`Monitoring ${activeStores.length} active stores...`);
 
       // Check each store
       for (const store of activeStores) {
         await this.checkStoreUptime(store);
       }
-
-      console.log('✅ Uptime checks completed');
     } catch (error) {
-      console.error('❌ Error performing uptime checks:', error);
+      console.error('Error performing uptime checks:', error);
     }
   }
 
@@ -65,7 +53,7 @@ class UptimeMonitor {
       const startTime = Date.now();
       const storeUrl = `https://${store.shopifyDomain}`;
       
-      console.log(`Checking uptime for ${store.shopifyDomain}...`);
+
 
       // Perform HTTP request to check store availability
       const response = await fetch(storeUrl, {
@@ -82,7 +70,7 @@ class UptimeMonitor {
       const status = response.ok ? 'up' : 'down';
       const statusCode = response.status;
 
-      console.log(`  ${store.shopifyDomain}: ${status} (${statusCode}) - ${responseTime}ms`);
+
 
       // Create uptime check record
       const uptimeCheck: InsertUptimeMonitoring = {
@@ -125,7 +113,7 @@ class UptimeMonitor {
       }
 
       await this.checkStoreUptime(store);
-      console.log(`✅ Manual uptime check completed for ${store.shopifyDomain}`);
+
     } catch (error) {
       console.error(`❌ Manual uptime check failed for store ${storeId}:`, error);
       throw error;
@@ -149,13 +137,11 @@ uptimeMonitor.start().catch(console.error);
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down uptime monitor...');
   await uptimeMonitor.stop();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down uptime monitor...');
   await uptimeMonitor.stop();
   process.exit(0);
 }); 

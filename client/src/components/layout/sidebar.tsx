@@ -3,9 +3,11 @@ import { Link, useLocation } from "wouter";
 import { useShopifyAuth } from "@/hooks/use-shopify-auth";
 import { GlobalScreenshotButton } from "@/components/global-screenshot-button";
 
+
 export default function Sidebar() {
   const [location] = useLocation();
   const { session } = useShopifyAuth();
+
   
   // Customer Portal Navigation (for store owners)
   const customerNavigation = [
@@ -87,7 +89,7 @@ export default function Sidebar() {
         })}
       </nav>
       
-      {/* Global Screenshot Tool Button */}
+      {/* Global Screenshot Tool */}
       <div className="p-4 border-t border-gray-200">
         <GlobalScreenshotButton />
       </div>

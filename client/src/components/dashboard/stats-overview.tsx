@@ -65,7 +65,7 @@ export default function StatsOverview({ stats }: StatsOverviewProps) {
           </div>
         </div>
         <div className="mt-4 flex items-center text-sm">
-          {stats.pageSpeedTrend !== undefined ? (
+          {stats.pageSpeedTrend !== undefined && stats.pageSpeedTrend !== null ? (
             <>
               {stats.pageSpeedTrend > 0 ? (
                 <svg className="w-4 h-4 text-shopify-critical mr-1" fill="currentColor" viewBox="0 0 20 20">

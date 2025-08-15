@@ -22,6 +22,7 @@ export const bugs = pgTable("bugs", {
   type: text("type").notNull(), // 'broken_link', 'js_error', 'performance', 'missing_image'
   url: text("url"),
   status: text("status").default('open'), // 'open', 'resolved', 'ignored'
+  deviceType: text("device_type").default('desktop'), // 'desktop', 'mobile'
   details: jsonb("details"), // Additional details like affected pages, specific errors, etc.
   detectedAt: timestamp("detected_at").defaultNow(),
   resolvedAt: timestamp("resolved_at"),
@@ -32,6 +33,7 @@ export const scans = pgTable("scans", {
   storeId: varchar("store_id").references(() => stores.id).notNull(),
   type: text("type").notNull(), // 'full_site', 'performance', 'link_validation'
   status: text("status").notNull(), // 'running', 'completed', 'failed'
+  deviceType: text("device_type").default('desktop'), // 'desktop', 'mobile'
   pagesScanned: integer("pages_scanned").default(0),
   duration: integer("duration_seconds"),
   startedAt: timestamp("started_at").defaultNow(),
@@ -41,6 +43,7 @@ export const scans = pgTable("scans", {
 export const performanceMetrics = pgTable("performance_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   storeId: varchar("store_id").references(() => stores.id).notNull(),
+  deviceType: text("device_type").default('desktop'), // 'desktop', 'mobile'
   lcp: decimal("lcp", { precision: 5, scale: 2 }), // Largest Contentful Paint
   fcp: decimal("fcp", { precision: 5, scale: 2 }), // First Contentful Paint
   cls: decimal("cls", { precision: 5, scale: 3 }), // Cumulative Layout Shift
@@ -51,6 +54,15 @@ export const performanceMetrics = pgTable("performance_metrics", {
   bestPracticesScore: integer("best_practices_score"), // Best Practices category (0-100)
   seoScore: integer("seo_score"), // SEO category (0-100)
   pwaScore: integer("pwa_score"), // Progressive Web App category (0-100)
+  // Additional metrics
+  timeToInteractive: integer("time_to_interactive"), // Time to Interactive in seconds
+  speedIndex: integer("speed_index"), // Speed Index in seconds
+  // Detailed audit results stored as JSON
+  auditOpportunities: jsonb("audit_opportunities"), // Array of opportunity audits
+  auditDiagnostics: jsonb("audit_diagnostics"), // Array of diagnostic audits
+  auditPassed: jsonb("audit_passed"), // Array of passed audits
+  // Engine used for the scan
+  scanEngine: text("scan_engine").default('lighthouse'), // 'lighthouse' or 'pagespeed'
   measuredAt: timestamp("measured_at").defaultNow(),
 });
 

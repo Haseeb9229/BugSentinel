@@ -10,10 +10,12 @@ import Sidebar from "@/components/layout/sidebar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useShopifyAuth } from "@/hooks/use-shopify-auth";
+import { useDevice } from "@/contexts/device-context";
 import { useLocation } from "wouter";
 import type { Alert, AlertSetting } from "@shared/schema";
 
 export default function Alerts() {
+  const { deviceType } = useDevice();
   const [storeId, setStoreId] = useState<string | null>(null);
   const [responseTimeThreshold, setResponseTimeThreshold] = useState(2000);
   const [errorRateThreshold, setErrorRateThreshold] = useState(5);

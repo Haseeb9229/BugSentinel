@@ -189,7 +189,6 @@ export class ShopifyBillingService {
           overagePrice
         );
 
-        console.log(`Created usage charge for ${storeId}: ${overage} scans, $${overagePrice}`);
       }
     } catch (error) {
       console.error('Error tracking scan usage:', error);

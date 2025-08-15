@@ -1,7 +1,7 @@
 import { WebClient } from "@slack/web-api";
 
 // Slack module will now use credentials from database per store
-console.log('Slack module loaded - credentials will be loaded per store');
+
 
 export interface SlackNotification {
   title: string;

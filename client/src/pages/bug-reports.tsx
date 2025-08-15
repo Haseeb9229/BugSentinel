@@ -26,6 +26,7 @@ import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useShopifyAuth } from "@/hooks/use-shopify-auth";
+import { useDevice } from "@/contexts/device-context";
 import type { Bug } from "@shared/schema";
 
 interface BugFilters {
@@ -46,6 +47,7 @@ interface BugStats {
 }
 
 export default function BugReports() {
+  const { deviceType } = useDevice();
   const [storeId, setStoreId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<BugFilters>({
@@ -102,11 +104,12 @@ export default function BugReports() {
   const queryParams = new URLSearchParams({
     page: currentPage.toString(),
     limit: '10',
+    deviceType: deviceType,
     ...filters
   });
 
   const { data: bugsData, isLoading, error } = useQuery({
-    queryKey: ["/api/bugs", storeId, queryParams.toString()],
+    queryKey: ["/api/bugs", storeId, deviceType, queryParams.toString()],
     queryFn: async () => {
       const response = await fetch(`/api/bugs/${storeId}?${queryParams.toString()}`, {
         credentials: "include",
@@ -184,7 +187,7 @@ export default function BugReports() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await queryClient.invalidateQueries({ queryKey: ["/api/bugs", storeId] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/bugs", storeId, deviceType] });
       toast({
         title: "Refreshed",
         description: "Bug reports have been updated.",

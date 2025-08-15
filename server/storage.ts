@@ -27,6 +27,7 @@ export interface IStorage {
 
   // Bugs
   getBugsByStoreId(storeId: string): Promise<Bug[]>;
+  getBugsByStoreIdAndDevice(storeId: string, deviceType: string): Promise<Bug[]>;
   getAllBugs(): Promise<Bug[]>;
   getBugById(bugId: string): Promise<Bug | undefined>;
   createBug(bug: InsertBug): Promise<Bug>;
@@ -41,7 +42,9 @@ export interface IStorage {
 
   // Performance Metrics
   getLatestPerformanceMetrics(storeId: string): Promise<PerformanceMetric | undefined>;
+  getLatestPerformanceMetricsByDevice(storeId: string, deviceType: string): Promise<PerformanceMetric | undefined>;
   getPerformanceMetricsByStore(storeId: string): Promise<PerformanceMetric[]>;
+  getPerformanceMetricsByStoreAndDevice(storeId: string, deviceType: string): Promise<PerformanceMetric[]>;
   getAllPerformanceMetrics(): Promise<PerformanceMetric[]>;
   createPerformanceMetric(metric: InsertPerformanceMetric): Promise<PerformanceMetric>;
 
@@ -113,7 +116,15 @@ export class DatabaseStorage implements IStorage {
       .from(bugs)
       .where(eq(bugs.storeId, storeId))
       .orderBy(desc(bugs.detectedAt));
-    console.log(`Storage: Found ${result.length} bugs for store ${storeId}`);
+    return result;
+  }
+
+  async getBugsByStoreIdAndDevice(storeId: string, deviceType: string): Promise<Bug[]> {
+    const result = await db
+      .select()
+      .from(bugs)
+      .where(and(eq(bugs.storeId, storeId), eq(bugs.deviceType, deviceType)))
+      .orderBy(desc(bugs.detectedAt));
     return result;
   }
 
@@ -122,7 +133,6 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(bugs)
       .orderBy(desc(bugs.detectedAt));
-    console.log(`Storage: Found ${result.length} total bugs in database`);
     return result;
   }
 
@@ -201,6 +211,16 @@ export class DatabaseStorage implements IStorage {
     return metric || undefined;
   }
 
+  async getLatestPerformanceMetricsByDevice(storeId: string, deviceType: string): Promise<PerformanceMetric | undefined> {
+    const [metric] = await db
+      .select()
+      .from(performanceMetrics)
+      .where(and(eq(performanceMetrics.storeId, storeId), eq(performanceMetrics.deviceType, deviceType)))
+      .orderBy(desc(performanceMetrics.measuredAt))
+      .limit(1);
+    return metric || undefined;
+  }
+
   async createPerformanceMetric(insertMetric: InsertPerformanceMetric): Promise<PerformanceMetric> {
     const [metric] = await db
       .insert(performanceMetrics)
@@ -214,6 +234,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(performanceMetrics)
       .where(eq(performanceMetrics.storeId, storeId))
+      .orderBy(desc(performanceMetrics.measuredAt));
+  }
+
+  async getPerformanceMetricsByStoreAndDevice(storeId: string, deviceType: string): Promise<PerformanceMetric[]> {
+    return await db
+      .select()
+      .from(performanceMetrics)
+      .where(and(eq(performanceMetrics.storeId, storeId), eq(performanceMetrics.deviceType, deviceType)))
       .orderBy(desc(performanceMetrics.measuredAt));
   }
 
@@ -260,6 +288,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(alerts.storeId, storeId))
       .orderBy(desc(alerts.createdAt));
   }
+
+
 
   async getAllAlerts(): Promise<Alert[]> {
     return await db

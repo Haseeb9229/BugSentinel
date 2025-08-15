@@ -10,9 +10,11 @@ import Sidebar from "@/components/layout/sidebar";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useShopifyAuth } from "@/hooks/use-shopify-auth";
+import { useDevice } from "@/contexts/device-context";
 import { useLocation } from "wouter";
 
 export default function Monitoring() {
+  const { deviceType } = useDevice();
   const [storeId, setStoreId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { toast } = useToast();
@@ -50,7 +52,17 @@ export default function Monitoring() {
   });
 
   const { data: recentScans, isLoading: recentScansLoading } = useQuery({
-    queryKey: ["/api/dashboard", storeId],
+    queryKey: ["/api/dashboard", storeId, deviceType],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/${storeId}?deviceType=${deviceType}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch dashboard data: ${response.status}`);
+      }
+      const data = await response.json();
+      return data;
+    },
     enabled: !!storeId,
   });
 
@@ -65,7 +77,7 @@ export default function Monitoring() {
         // TODO: Uncomment in next version: queryClient.invalidateQueries({ queryKey: ["/api/theme-changes", storeId] }),
         queryClient.invalidateQueries({ queryKey: ["/api/app-installations", storeId] }),
         queryClient.invalidateQueries({ queryKey: ["/api/scheduled-scans"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/dashboard", storeId] })
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard", storeId, deviceType] })
       ]);
       
       toast({
@@ -84,7 +96,6 @@ export default function Monitoring() {
   };
 
   const handleGoToSettings = () => {
-    console.log('Navigating to settings with highlight parameter');
     setLocation('/settings?highlight=scan-frequency');
   };
 

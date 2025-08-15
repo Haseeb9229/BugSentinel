@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { OnboardingAnimation } from "@/components/onboarding/onboarding-animation";
 import { useShopifyAuth } from "@/hooks/use-shopify-auth";
 import { ShopifyProvider } from "@/components/shopify/shopify-provider";
+import { DeviceProvider } from "@/contexts/device-context";
 import Dashboard from "@/pages/dashboard";
 import BugReports from "@/pages/bug-reports";
 import Performance from "@/pages/performance";
@@ -128,15 +129,17 @@ function App() {
   if (isAuthenticated && session) {
     return (
       <QueryClientProvider client={queryClient}>
-        <ShopifyProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-            {showOnboarding && (
-              <OnboardingAnimation onComplete={handleOnboardingComplete} />
-            )}
-          </TooltipProvider>
-        </ShopifyProvider>
+        <DeviceProvider>
+          <ShopifyProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+              {showOnboarding && (
+                <OnboardingAnimation onComplete={handleOnboardingComplete} />
+              )}
+            </TooltipProvider>
+          </ShopifyProvider>
+        </DeviceProvider>
       </QueryClientProvider>
     );
   }

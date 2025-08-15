@@ -24,7 +24,6 @@ export default function AdminStoreDetail() {
   });
 
   const runManualScan = (scanType: string) => {
-    console.log(`Running ${scanType} scan for store ${storeId}`);
     // In real implementation, would trigger API call
   };
 
